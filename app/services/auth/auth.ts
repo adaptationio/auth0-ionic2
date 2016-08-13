@@ -1,7 +1,7 @@
 import {Storage, LocalStorage} from 'ionic-angular';
 import {AuthHttp, JwtHelper, tokenNotExpired} from 'angular2-jwt';
 import {Injectable, NgZone} from '@angular/core';
-import {Observable} from 'rxjs/Rx';
+import {Observable, Subject, BehaviorSubject} from 'rxjs/Rx';
 import {Auth0Vars} from '../../auth0-variables'
 
 // Avoid name not found warnings
@@ -10,6 +10,8 @@ declare var Auth0Lock: any;
 
 @Injectable()
 export class AuthService {
+  userSource = new BehaviorSubject<any>({});
+  user$ = this.userSource.asObservable();
   jwtHelper: JwtHelper = new JwtHelper();
   auth0 = new Auth0({clientID: Auth0Vars.AUTH0_CLIENT_ID, domain: Auth0Vars.AUTH0_DOMAIN });
   lock = new Auth0Lock(Auth0Vars.AUTH0_CLIENT_ID, Auth0Vars.AUTH0_DOMAIN, {
@@ -30,6 +32,8 @@ export class AuthService {
     // Check if there is a profile saved in local storage
     this.local.get('profile').then(profile => {
       this.user = JSON.parse(profile);
+      console.log(profile);
+      this.userSource.next(this.user)
     }).catch(error => {
       console.log(error);
     });
@@ -48,6 +52,8 @@ export class AuthService {
         profile.user_metadata = profile.user_metadata || {};
         this.local.set('profile', JSON.stringify(profile));
         this.user = profile;
+        console.log(profile)
+        this.userSource.next(this.user)
       });
 
       this.lock.hide();
@@ -74,7 +80,10 @@ export class AuthService {
     this.local.remove('profile');
     this.local.remove('id_token');
     this.local.remove('refresh_token');
-    this.zoneImpl.run(() => this.user = null);
+    this.zoneImpl.run(() => {
+      this.user = null
+      this.userSource.next(this.user)
+    });
     // Unschedule the token refresh
     this.unscheduleRefresh();
   }
