@@ -17,6 +17,8 @@ var AuthService = (function () {
     function AuthService(authHttp, zone) {
         var _this = this;
         this.authHttp = authHttp;
+        this.userSource = new Rx_1.BehaviorSubject({});
+        this.user$ = this.userSource.asObservable();
         this.jwtHelper = new angular2_jwt_1.JwtHelper();
         this.auth0 = new Auth0({ clientID: auth0_variables_1.Auth0Vars.AUTH0_CLIENT_ID, domain: auth0_variables_1.Auth0Vars.AUTH0_DOMAIN });
         this.lock = new Auth0Lock(auth0_variables_1.Auth0Vars.AUTH0_CLIENT_ID, auth0_variables_1.Auth0Vars.AUTH0_DOMAIN, {
@@ -32,6 +34,8 @@ var AuthService = (function () {
         // Check if there is a profile saved in local storage
         this.local.get('profile').then(function (profile) {
             _this.user = JSON.parse(profile);
+            console.log(profile);
+            _this.userSource.next(_this.user);
         }).catch(function (error) {
             console.log(error);
         });
@@ -47,6 +51,8 @@ var AuthService = (function () {
                 profile.user_metadata = profile.user_metadata || {};
                 _this.local.set('profile', JSON.stringify(profile));
                 _this.user = profile;
+                console.log(profile);
+                _this.userSource.next(_this.user);
             });
             _this.lock.hide();
             _this.local.set('refresh_token', authResult.refreshToken);
@@ -68,7 +74,10 @@ var AuthService = (function () {
         this.local.remove('profile');
         this.local.remove('id_token');
         this.local.remove('refresh_token');
-        this.zoneImpl.run(function () { return _this.user = null; });
+        this.zoneImpl.run(function () {
+            _this.user = null;
+            _this.userSource.next(_this.user);
+        });
         // Unschedule the token refresh
         this.unscheduleRefresh();
     };
